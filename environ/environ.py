@@ -28,6 +28,7 @@ from builtins import float as _float
 from builtins import list as _list
 from builtins import dict as _dict
 from builtins import tuple as _tuple
+from importlib.util import find_spec
 from typing import Mapping, Any, Self, SupportsIndex
 from urllib.parse import (
     parse_qs,
@@ -41,12 +42,23 @@ from urllib.parse import (
 
 from .compat import (
     DJANGO_POSTGRES,
-    ImproperlyConfigured,
-    json,
     PYMEMCACHE_DRIVER,
     REDIS_DRIVER,
 )
 from .fileaware_mapping import FileAwareMapping
+
+if find_spec("simplejson"):
+    import simplejson as json
+else:
+    import json  # type: ignore[no-redef]
+
+if find_spec("django"):
+    from django.core.exceptions import ImproperlyConfigured  # type: ignore[import-untyped]
+else:
+
+    class ImproperlyConfigured(Exception):  # type: ignore[no-redef]
+        """Django is somehow improperly configured"""
+
 
 Openable = (str, os.PathLike)
 logger = logging.getLogger(__name__)

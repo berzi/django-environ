@@ -10,19 +10,10 @@
 
 from importlib.util import find_spec
 
-if find_spec("simplejson"):
-    import simplejson as json
-else:
-    import json  # type: ignore[no-redef]
-
 if find_spec("django"):
-    from django import VERSION as DJANGO_VERSION
-    from django.core.exceptions import ImproperlyConfigured
+    from django import VERSION as DJANGO_VERSION  # type: ignore[import-untyped]
 else:
     DJANGO_VERSION = None
-
-    class ImproperlyConfigured(Exception):  # type: ignore[no-redef]
-        """Django is somehow improperly configured"""
 
 
 def choose_rediscache_driver() -> str:

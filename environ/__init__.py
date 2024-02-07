@@ -15,7 +15,7 @@ Refer to the `documentation <https://django-environ.readthedocs.io/en/latest/>`_
 for details on the use of this package.
 """  # noqa: E501
 
-from .environ import *
+from .environ import *  # noqa: F403
 
 
 __copyright__ = "Copyright (C) 2013-2023 Daniele Faraglia"
