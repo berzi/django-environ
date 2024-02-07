@@ -10,12 +10,12 @@
 
 from importlib.util import find_spec
 
-if find_spec('simplejson'):
+if find_spec("simplejson"):
     import simplejson as json
 else:
     import json  # type: ignore[no-redef]
 
-if find_spec('django'):
+if find_spec("django"):
     from django import VERSION as DJANGO_VERSION
     from django.core.exceptions import ImproperlyConfigured
 else:
@@ -29,33 +29,33 @@ def choose_rediscache_driver() -> str:
     """Backward compatibility for RedisCache driver."""
 
     # django-redis library takes precedence
-    if find_spec('django_redis'):
-        return 'django_redis.cache.RedisCache'
+    if find_spec("django_redis"):
+        return "django_redis.cache.RedisCache"
 
     # use built-in support if Django 4+
     if DJANGO_VERSION is not None and DJANGO_VERSION >= (4, 0):
-        return 'django.core.cache.backends.redis.RedisCache'
+        return "django.core.cache.backends.redis.RedisCache"
 
     # back compatibility with redis_cache package
-    return 'redis_cache.RedisCache'
+    return "redis_cache.RedisCache"
 
 
 def choose_postgres_driver() -> str:
     """Backward compatibility for postgresql driver."""
     old_django = DJANGO_VERSION is not None and DJANGO_VERSION < (2, 0)
     if old_django:
-        return 'django.db.backends.postgresql_psycopg2'
-    return 'django.db.backends.postgresql'
+        return "django.db.backends.postgresql_psycopg2"
+    return "django.db.backends.postgresql"
 
 
 def choose_pymemcache_driver() -> str:
     """Backward compatibility for pymemcache."""
     old_django = DJANGO_VERSION is not None and DJANGO_VERSION < (3, 2)
-    if old_django or not find_spec('pymemcache'):
+    if old_django or not find_spec("pymemcache"):
         # The original backend choice for the 'pymemcache' scheme is
         # unfortunately 'pylibmc'.
-        return 'django.core.cache.backends.memcached.PyLibMCCache'
-    return 'django.core.cache.backends.memcached.PyMemcacheCache'
+        return "django.core.cache.backends.memcached.PyLibMCCache"
+    return "django.core.cache.backends.memcached.PyMemcacheCache"
 
 
 REDIS_DRIVER = choose_rediscache_driver()

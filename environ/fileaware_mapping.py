@@ -26,7 +26,9 @@ class FileAwareMapping(MutableMapping[str, Any]):
     environment, and an exception is raised if the file can not be found.
     """
 
-    def __init__(self, env: MutableMapping[str, Any] | None = None, cache: bool = True) -> None:
+    def __init__(
+        self, env: MutableMapping[str, Any] | None = None, cache: bool = True
+    ) -> None:
         """
         Initialize the mapping.
 
@@ -46,7 +48,7 @@ class FileAwareMapping(MutableMapping[str, Any]):
             return self.files_cache[key]
         key_file = self.env.get(key + "_FILE")
         if key_file:
-            with open(key_file, encoding='utf-8') as f:
+            with open(key_file, encoding="utf-8") as f:
                 value = f.read()
             if self.cache:
                 self.files_cache[key] = value

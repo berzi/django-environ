@@ -18,30 +18,30 @@ for details on the use of this package.
 from .environ import *
 
 
-__copyright__ = 'Copyright (C) 2013-2023 Daniele Faraglia'
+__copyright__ = "Copyright (C) 2013-2023 Daniele Faraglia"
 """The copyright notice of the package."""
 
-__version__ = '0.11.3'
+__version__ = "0.11.3"
 """The version of the package."""
 
-__license__ = 'MIT'
+__license__ = "MIT"
 """The license of the package."""
 
-__author__ = 'Daniele Faraglia'
+__author__ = "Daniele Faraglia"
 """The author of the package."""
 
-__author_email__ = 'daniele.faraglia@gmail.com'
+__author_email__ = "daniele.faraglia@gmail.com"
 """The email of the author of the package."""
 
-__maintainer__ = 'Serghei Iakovlev'
+__maintainer__ = "Serghei Iakovlev"
 """The maintainer of the package."""
 
-__maintainer_email__ = 'egrep@protonmail.ch'
+__maintainer_email__ = "egrep@protonmail.ch"
 """The email of the maintainer of the package."""
 
-__url__ = 'https://django-environ.readthedocs.org'
+__url__ = "https://django-environ.readthedocs.org"
 """The URL of the package."""
 
 # pylint: disable=line-too-long
-__description__ = 'A package that allows you to utilize 12factor inspired environment variables to configure your Django application.'  # noqa: E501
+__description__ = "A package that allows you to utilize 12factor inspired environment variables to configure your Django application."  # noqa: E501
 """The description of the package."""
