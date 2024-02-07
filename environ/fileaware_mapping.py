@@ -9,10 +9,11 @@
 """Docker-style file variable support module."""
 
 import os
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, Iterator
+from typing import Any
 
 
-class FileAwareMapping(MutableMapping):
+class FileAwareMapping(MutableMapping[str, Any]):
     """
     A mapping that wraps os.environ, first checking for the existence of a key
     appended with ``_FILE`` whenever reading a value. If a matching file key is
@@ -25,7 +26,7 @@ class FileAwareMapping(MutableMapping):
     environment, and an exception is raised if the file can not be found.
     """
 
-    def __init__(self, env=None, cache=True):
+    def __init__(self, env: MutableMapping[str, Any] | None = None, cache: bool = True) -> None:
         """
         Initialize the mapping.
 
@@ -38,9 +39,9 @@ class FileAwareMapping(MutableMapping):
         """
         self.env = env if env is not None else os.environ
         self.cache = cache
-        self.files_cache = {}
+        self.files_cache: dict[str, Any] = {}
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         if self.cache and key in self.files_cache:
             return self.files_cache[key]
         key_file = self.env.get(key + "_FILE")
@@ -52,7 +53,7 @@ class FileAwareMapping(MutableMapping):
             return value
         return self.env[key]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         """
         Iterate all keys, also always including the shortened key if ``_FILE``
         keys are found.
@@ -64,21 +65,21 @@ class FileAwareMapping(MutableMapping):
                 if no_file_key and no_file_key not in self.env:
                     yield no_file_key
 
-    def __len__(self):
+    def __len__(self) -> int:
         """
         Return the length of the file, also always counting shortened keys for
         any ``_FILE`` key found.
         """
         return len(tuple(iter(self)))
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> None:
         self.env[key] = value
         if self.cache and key.endswith("_FILE"):
             no_file_key = key[:-5]
             if no_file_key and no_file_key in self.files_cache:
                 del self.files_cache[no_file_key]
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         file_key = key + "_FILE"
         if file_key in self.env:
             del self[file_key]

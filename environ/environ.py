@@ -18,6 +18,17 @@ import os
 import re
 import sys
 import warnings
+
+# Aliases for builtin types for use in annotations inside Env, which shadows their names.
+from builtins import str as _str
+from builtins import bytes as _bytes
+from builtins import bool as _bool
+from builtins import int as _int
+from builtins import float as _float
+from builtins import list as _list
+from builtins import dict as _dict
+from builtins import tuple as _tuple
+from typing import Mapping, Any, Self, SupportsIndex
 from urllib.parse import (
     parse_qs,
     ParseResult,
@@ -41,7 +52,7 @@ Openable = (str, os.PathLike)
 logger = logging.getLogger(__name__)
 
 
-def _cast(value):
+def _cast(value: str) -> Any:
     # Safely evaluate an expression node or a string containing a Python
     # literal or container display.
     # https://docs.python.org/3/library/ast.html#ast.literal_eval
@@ -51,23 +62,23 @@ def _cast(value):
         return value
 
 
-def _cast_int(v):
+def _cast_int(v: str) -> int | str:
     """Return int if possible."""
     return int(v) if hasattr(v, 'isdigit') and v.isdigit() else v
 
 
-def _cast_urlstr(v):
+def _cast_urlstr(v: str) -> str:
     return unquote(v) if isinstance(v, str) else v
 
 
-def _urlparse_quote(url):
+def _urlparse_quote(url: str) -> ParseResult:
     return urlparse(quote(url, safe=':/?&=@'))
 
 
 class NoValue:
-    """Represent of no value object."""
+    """Represent a no-value object."""
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<{self.__class__.__name__}>'
 
 
@@ -101,7 +112,7 @@ class Env:
         SMTP_LOGIN = env('SMTP_LOGIN')
     """
 
-    ENVIRON = os.environ
+    ENVIRON: Mapping[str, Any] = os.environ
     NOTSET = NoValue()
     BOOLEAN_TRUE_STRINGS = ('true', 'on', 'ok', 'y', 'yes', '1')
     URL_CLASS = ParseResult
@@ -189,13 +200,13 @@ class Env:
                             for s in ('', 's')]
     CLOUDSQL = 'cloudsql'
 
-    def __init__(self, **scheme):
+    def __init__(self, **scheme: tuple[type, Any]) -> None:
         self.smart_cast = True
         self.escape_proxy = False
         self.prefix = ""
         self.scheme = scheme
 
-    def __call__(self, var, cast=None, default=NOTSET, parse_default=False):
+    def __call__(self, var: _str, cast: Any = None, default: Any = NOTSET, parse_default: _bool = False) -> Any:
         return self.get_value(
             var,
             cast=cast,
@@ -203,81 +214,54 @@ class Env:
             parse_default=parse_default
         )
 
-    def __contains__(self, var):
+    def __contains__(self, var: _str) -> _bool:
         return var in self.ENVIRON
 
-    def str(self, var, default=NOTSET, multiline=False):
-        """
-        :rtype: str
-        """
+    def str(self, var: _str, default: _str | NoValue = NOTSET, multiline: _bool = False) -> _str:
         value = self.get_value(var, cast=str, default=default)
         if multiline:
             return re.sub(r'(\\r)?\\n', r'\n', value)
         return value
 
-    def bytes(self, var, default=NOTSET, encoding='utf8'):
-        """
-        :rtype: bytes
-        """
+    def bytes(self, var: _str, default: _bytes | NoValue = NOTSET, encoding: _str = 'utf8') -> _bytes:
         value = self.get_value(var, cast=str, default=default)
         if hasattr(value, 'encode'):
             return value.encode(encoding)
         return value
 
-    def bool(self, var, default=NOTSET):
-        """
-        :rtype: bool
-        """
+    def bool(self, var: _str, default: _bool | NoValue = NOTSET) -> _bool:
         return self.get_value(var, cast=bool, default=default)
 
-    def int(self, var, default=NOTSET):
-        """
-        :rtype: int
-        """
+    def int(self, var: _str, default: _int | NoValue = NOTSET) -> _int:
         return self.get_value(var, cast=int, default=default)
 
-    def float(self, var, default=NOTSET):
-        """
-        :rtype: float
-        """
+    def float(self, var: _str, default: _float | NoValue = NOTSET) -> _float:
         return self.get_value(var, cast=float, default=default)
 
-    def json(self, var, default=NOTSET):
+    def json(self, var: _str, default: _dict[_str, Any] | NoValue = NOTSET) -> _dict[_str, Any]:
         """
         :returns: Json parsed
         """
         return self.get_value(var, cast=json.loads, default=default)
 
-    def list(self, var, cast=None, default=NOTSET):
-        """
-        :rtype: list
-        """
+    def list(self, var: _str, cast: Any = None, default: _list | NoValue = NOTSET) -> _list:
         return self.get_value(
             var,
             cast=list if not cast else [cast],
             default=default
         )
 
-    def tuple(self, var, cast=None, default=NOTSET):
-        """
-        :rtype: tuple
-        """
+    def tuple(self, var: _str, cast: Any = None, default: _tuple | NoValue = NOTSET) -> _tuple:
         return self.get_value(
             var,
             cast=tuple if not cast else (cast,),
             default=default
         )
 
-    def dict(self, var, cast=dict, default=NOTSET):
-        """
-        :rtype: dict
-        """
+    def dict(self, var: _str, cast: Any = _dict, default: _dict | NoValue = NOTSET) -> _dict:
         return self.get_value(var, cast=cast, default=default)
 
-    def url(self, var, default=NOTSET):
-        """
-        :rtype: urllib.parse.ParseResult
-        """
+    def url(self, var: _str, default: ParseResult | _str | NoValue = NOTSET) -> ParseResult:
         return self.get_value(
             var,
             cast=urlparse,
@@ -285,12 +269,10 @@ class Env:
             parse_default=True
         )
 
-    def db_url(self, var=DEFAULT_DATABASE_ENV, default=NOTSET, engine=None):
+    def db_url(self, var: _str = DEFAULT_DATABASE_ENV, default: _str | NoValue = NOTSET, engine: _str | None = None) -> _dict[_str, Any]:
         """Returns a config dictionary, defaulting to DATABASE_URL.
 
         The db method is an alias for db_url.
-
-        :rtype: dict
         """
         return self.db_url_config(
             self.get_value(var, default=default),
@@ -299,12 +281,10 @@ class Env:
 
     db = db_url
 
-    def cache_url(self, var=DEFAULT_CACHE_ENV, default=NOTSET, backend=None):
+    def cache_url(self, var: _str = DEFAULT_CACHE_ENV, default: _str | NoValue = NOTSET, backend: _str | None = None) -> _dict[_str, Any]:
         """Returns a config dictionary, defaulting to CACHE_URL.
 
         The cache method is an alias for cache_url.
-
-        :rtype: dict
         """
         return self.cache_url_config(
             self.url(var, default=default),
@@ -313,12 +293,10 @@ class Env:
 
     cache = cache_url
 
-    def email_url(self, var=DEFAULT_EMAIL_ENV, default=NOTSET, backend=None):
+    def email_url(self, var: _str = DEFAULT_EMAIL_ENV, default: _str | NoValue = NOTSET, backend: _str | None = None) -> _dict[_str, Any]:
         """Returns a config dictionary, defaulting to EMAIL_URL.
 
         The email method is an alias for email_url.
-
-        :rtype: dict
         """
         return self.email_url_config(
             self.url(var, default=default),
@@ -327,23 +305,17 @@ class Env:
 
     email = email_url
 
-    def search_url(self, var=DEFAULT_SEARCH_ENV, default=NOTSET, engine=None):
-        """Returns a config dictionary, defaulting to SEARCH_URL.
-
-        :rtype: dict
-        """
+    def search_url(self, var: _str = DEFAULT_SEARCH_ENV, default: _str | NoValue = NOTSET, engine: _str | None = None) -> _dict[_str, Any]:
+        """Returns a config dictionary, defaulting to SEARCH_URL."""
         return self.search_url_config(
             self.url(var, default=default),
             engine=engine
         )
 
-    def path(self, var, default=NOTSET, **kwargs):
-        """
-        :rtype: Path
-        """
+    def path(self, var: _str, default: "Path" | NoValue = NOTSET, **kwargs) -> "Path":
         return Path(self.get_value(var, default=default), **kwargs)
 
-    def get_value(self, var, cast=None, default=NOTSET, parse_default=False):
+    def get_value(self, var: _str, cast: Any = None, default: Any = NOTSET, parse_default: _bool = False) -> Any:
         """Return value for given environment variable.
 
         :param str var:
@@ -355,7 +327,6 @@ class Env:
         :param bool parse_default:
             Force to parse default.
         :returns: Value from environment or default (if set).
-        :rtype: typing.IO[typing.Any]
         """
 
         logger.debug(
@@ -417,7 +388,7 @@ class Env:
         return value
 
     @classmethod
-    def parse_value(cls, value, cast):
+    def parse_value(cls, value: _str, cast: Any) -> Any:
         """Parse and cast provided value
 
         :param value: Stringed value.
@@ -429,36 +400,29 @@ class Env:
             return value
         if cast is bool:
             try:
-                value = int(value) != 0
+                return int(value) != 0
             except ValueError:
-                value = value.lower().strip() in cls.BOOLEAN_TRUE_STRINGS
+                return value.lower().strip() in cls.BOOLEAN_TRUE_STRINGS
         elif isinstance(cast, list):
-            value = list(map(cast[0], [x for x in value.split(',') if x]))
+            return list(map(cast[0], [x for x in value.split(',') if x]))
         elif isinstance(cast, tuple):
             val = value.strip('(').strip(')').split(',')
-            value = tuple(map(cast[0], [x for x in val if x]))
+            return tuple(map(cast[0], [x for x in val if x]))
         elif isinstance(cast, dict):
             key_cast = cast.get('key', str)
             value_cast = cast.get('value', str)
             value_cast_by_key = cast.get('cast', {})
-            value = dict(map(
-                lambda kv: (
-                    key_cast(kv[0]),
-                    cls.parse_value(
-                        kv[1],
-                        value_cast_by_key.get(kv[0], value_cast)
-                    )
-                ),
-                [val.split('=') for val in value.split(';') if val]
-            ))
+            return {
+                key_cast(k): cls.parse_value(v, value_cast_by_key.get(k, value_cast))
+                for k, v in [val.split('=') for val in value.split(';') if val]
+            }
         elif cast is dict:
-            value = dict([v.split('=', 1) for v in value.split(',') if v])
+            return dict([v.split('=', 1) for v in value.split(',') if v])
         elif cast is list:
-            value = [x for x in value.split(',') if x]
+            return [x for x in value.split(',') if x]
         elif cast is tuple:
             val = value.strip('(').strip(')').split(',')
-            # pylint: disable=consider-using-generator
-            value = tuple([x for x in val if x])
+            return tuple([x for x in val if x])
         elif cast is float:
             # clean string
             float_str = re.sub(r'[^\d,.-]', '', value)
@@ -469,14 +433,13 @@ class Env:
                 float_str = parts[0]
             else:
                 float_str = f"{''.join(parts[0:-1])}.{parts[-1]}"
-            value = float(float_str)
+            return float(float_str)
         else:
-            value = cast(value)
-        return value
+            return cast(value)
 
     @classmethod
     # pylint: disable=too-many-statements
-    def db_url_config(cls, url, engine=None):
+    def db_url_config(cls, url: _str | ParseResult, engine: _str | None = None) -> _dict[_str, Any]:
         # pylint: enable-msg=too-many-statements
         """Parse an arbitrary database URL.
 
@@ -500,7 +463,6 @@ class Env:
         :param str or None engine:
             If None, the database engine is evaluates from the ``url``.
         :return: Parsed database URL.
-        :rtype: dict
         """
         if not isinstance(url, cls.URL_CLASS):
             if url == 'sqlite://:memory:':
@@ -516,9 +478,9 @@ class Env:
                 url = urlparse(url)
             # handle Invalid IPv6 URL
             except ValueError:
-                url = _urlparse_quote(url)
+                url = _urlparse_quote(str(url))
 
-        config = {}
+        config: dict[str, Any] = {}
 
         # handle unexpected URL schemes with special characters
         if not url.path:
@@ -556,18 +518,18 @@ class Env:
                 )
             )
             hostname = ','.join(hinfo[0])
-            port = ','.join(filter(None, hinfo[1])) if len(hinfo) == 2 else ''
+            port: _str = ','.join(filter(None, hinfo[1])) if len(hinfo) == 2 else ''
         else:
-            hostname = url.hostname
-            port = url.port
+            hostname = url.hostname or ''
+            port = str(url.port) or ''
 
         # Update with environment configuration.
         config.update({
             'NAME': path or '',
-            'USER': _cast_urlstr(url.username) or '',
-            'PASSWORD': _cast_urlstr(url.password) or '',
-            'HOST': hostname or '',
-            'PORT': _cast_int(port) or '',
+            'USER': _cast_urlstr(str(url.username)) or '',
+            'PASSWORD': _cast_urlstr(str(url.password)) or '',
+            'HOST': hostname,
+            'PORT': _cast_int(port),
         })
 
         if (
@@ -611,7 +573,7 @@ class Env:
         return config
 
     @classmethod
-    def cache_url_config(cls, url, backend=None):
+    def cache_url_config(cls, url: _str | ParseResult, backend: _str | None = None) -> _dict[_str, Any]:
         """Parse an arbitrary cache URL.
 
         :param urllib.parse.ParseResult or str url:
@@ -619,7 +581,6 @@ class Env:
         :param str or None backend:
             If None, the backend is evaluates from the ``url``.
         :return: Parsed cache URL.
-        :rtype: dict
         """
         if not isinstance(url, cls.URL_CLASS):
             if not url:
@@ -629,11 +590,11 @@ class Env:
         if url.scheme not in cls.CACHE_SCHEMES:
             raise ImproperlyConfigured(f'Invalid cache schema {url.scheme}')
 
-        location = url.netloc.split(',')
+        location: str | list[str] = url.netloc.split(',')
         if len(location) == 1:
             location = location[0]
 
-        config = {
+        config: dict[str, Any] = {
             'BACKEND': cls.CACHE_SCHEMES[url.scheme],
             'LOCATION': location,
         }
@@ -684,7 +645,7 @@ class Env:
         return config
 
     @classmethod
-    def email_url_config(cls, url, backend=None):
+    def email_url_config(cls, url: _str | ParseResult, backend: _str | None = None) -> _dict[_str, Any]:
         """Parse an arbitrary email URL.
 
         :param urllib.parse.ParseResult or str url:
@@ -692,10 +653,9 @@ class Env:
         :param str or None backend:
             If None, the backend is evaluates from the ``url``.
         :return: Parsed email URL.
-        :rtype: dict
         """
 
-        config = {}
+        config: dict[str, Any] = {}
 
         url = urlparse(url) if not isinstance(url, cls.URL_CLASS) else url
 
@@ -706,10 +666,10 @@ class Env:
         # Update with environment configuration
         config.update({
             'EMAIL_FILE_PATH': path,
-            'EMAIL_HOST_USER': _cast_urlstr(url.username),
-            'EMAIL_HOST_PASSWORD': _cast_urlstr(url.password),
+            'EMAIL_HOST_USER': _cast_urlstr(str(url.username)),
+            'EMAIL_HOST_PASSWORD': _cast_urlstr(str(url.password)),
             'EMAIL_HOST': url.hostname,
-            'EMAIL_PORT': _cast_int(url.port),
+            'EMAIL_PORT': _cast_int(str(url.port)),
         })
 
         if backend:
@@ -737,9 +697,9 @@ class Env:
         return config
 
     @classmethod
-    def _parse_common_search_params(cls, url):
-        cfg = {}
-        prs = {}
+    def _parse_common_search_params(cls, url: ParseResult) -> _tuple[_dict[_str, _list[_str]], _dict[_str, _list[_str]]]:
+        cfg: _dict[_str, _list[_str]] = {}
+        prs: _dict[_str, _list[_str]] = {}
 
         if not url.query or str(url.query) == '':
             return cfg, prs
@@ -755,8 +715,8 @@ class Env:
         return cfg, prs
 
     @classmethod
-    def _parse_elasticsearch_search_params(cls, url, path, secure, params):
-        cfg = {}
+    def _parse_elasticsearch_search_params(cls, url: ParseResult, path: _str, secure: _bool, params: _dict[_str, Any]) -> _dict[_str, Any]:
+        cfg: _dict[_str, Any] = {}
         split = path.rsplit('/', 1)
 
         if len(split) > 1:
@@ -777,9 +737,10 @@ class Env:
         return cfg
 
     @classmethod
-    def _parse_solr_search_params(cls, url, path, params):
-        cfg = {}
-        cfg['URL'] = urlunparse(('http',) + url[1:2] + (path,) + ('', '', ''))
+    def _parse_solr_search_params(cls, url: ParseResult, path: _str, params: _dict[_str, Any]) -> _dict[_str, Any]:
+        cfg: _dict[_str, Any] = {
+            'URL': urlunparse(('http',) + url[1:2] + (path,) + ('', '', '')),
+        }
         if 'TIMEOUT' in params:
             cfg['TIMEOUT'] = cls.parse_value(params['TIMEOUT'][0], int)
         if 'KWARGS' in params:
@@ -787,7 +748,7 @@ class Env:
         return cfg
 
     @classmethod
-    def _parse_whoosh_search_params(cls, params):
+    def _parse_whoosh_search_params(cls, params: _dict[_str, Any]) -> _dict[_str, Any]:
         cfg = {}
         if 'STORAGE' in params:
             cfg['STORAGE'] = params['STORAGE'][0]
@@ -796,14 +757,14 @@ class Env:
         return cfg
 
     @classmethod
-    def _parse_xapian_search_params(cls, params):
+    def _parse_xapian_search_params(cls, params: _dict[_str, Any]) -> _dict[_str, Any]:
         cfg = {}
         if 'FLAGS' in params:
             cfg['FLAGS'] = params['FLAGS'][0]
         return cfg
 
     @classmethod
-    def search_url_config(cls, url, engine=None):
+    def search_url_config(cls, url: ParseResult | _str, engine: _str | None = None) -> _dict[_str, Any]:
         """Parse an arbitrary search URL.
 
         :param urllib.parse.ParseResult or str url:
@@ -811,9 +772,8 @@ class Env:
         :param str or None engine:
             If None, the engine is evaluates from the ``url``.
         :return: Parsed search URL.
-        :rtype: dict
         """
-        config = {}
+        config: _dict[_str, Any] = {}
         url = urlparse(url) if not isinstance(url, cls.URL_CLASS) else url
 
         # Remove query strings.
@@ -862,9 +822,9 @@ class Env:
         return config
 
     @classmethod
-    def read_env(cls, env_file=None, overwrite=False, parse_comments=False,
-                 encoding='utf8', **overrides):
-        r"""Read a .env file into os.environ.
+    def read_env(cls, env_file: _str | None = None, overwrite: _bool = False, parse_comments: _bool = False,
+                 encoding='utf8', **overrides: Any) -> None:
+        """Read a .env file into os.environ.
 
         If not given a path to a dotenv path, does filthy magic stack
         backtracking to find the dotenv in the same directory as the file that
@@ -886,7 +846,7 @@ class Env:
         :param parse_comments: Determines whether to recognize and ignore
            inline comments in the .env file. Default is False.
         :param encoding: The encoding to use when reading the environment file.
-        :param \**overrides: Any additional keyword arguments provided directly
+        :param overrides: Any additional keyword arguments provided directly
             to read_env will be added to the environment. If the key matches an
             existing environment variable, the value will be overridden.
         """
@@ -894,7 +854,7 @@ class Env:
             # pylint: disable=protected-access
             frame = sys._getframe()
             env_file = os.path.join(
-                os.path.dirname(frame.f_back.f_code.co_filename),
+                os.path.dirname(frame.f_back.f_code.co_filename),  # type: ignore[union-attr]
                 '.env'
             )
             if not os.path.exists(env_file):
@@ -1006,7 +966,7 @@ class FileAwareEnv(Env):
 class Path:
     """Inspired to Django Two-scoops, handling File Paths in Settings."""
 
-    def path(self, *paths, **kwargs):
+    def path(self, *paths: _str, **kwargs: _bool) -> Self:
         """Create new Path based on self.root and provided paths.
 
         :param paths: List of sub paths
@@ -1015,24 +975,24 @@ class Path:
         """
         return self.__class__(self.__root__, *paths, **kwargs)
 
-    def file(self, name, *args, **kwargs):
-        r"""Open a file.
+    def file(self, name: _str, *args: Any, **kwargs: Any):
+        """Open a file.
 
         :param str name: Filename appended to :py:attr:`~root`
-        :param \*args: ``*args`` passed to :py:func:`open`
-        :param \**kwargs: ``**kwargs`` passed to :py:func:`open`
+        :param args: ``*args`` passed to :py:func:`open`
+        :param kwargs: ``**kwargs`` passed to :py:func:`open`
         :rtype: typing.IO[typing.Any]
         """
         # pylint: disable=unspecified-encoding
         return open(self(name), *args, **kwargs)
 
     @property
-    def root(self):
+    def root(self) -> _str:
         """Current directory for this Path"""
         return self.__root__
 
     # pylint: disable=keyword-arg-before-vararg
-    def __init__(self, start='', *paths, **kwargs):
+    def __init__(self, start='', *paths, **kwargs) -> None:
 
         super().__init__()
 
@@ -1041,7 +1001,7 @@ class Path:
 
         self.__root__ = self._absolute_join(start, *paths, **kwargs)
 
-    def __call__(self, *paths, **kwargs):
+    def __call__(self, *paths: _str, **kwargs: Any) -> _str:
         """Retrieve the absolute path, with appended paths
 
         :param paths: List of sub path of self.root
@@ -1049,20 +1009,20 @@ class Path:
         """
         return self._absolute_join(self.__root__, *paths, **kwargs)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> _bool:
         if isinstance(other, Path):
             return self.__root__ == other.__root__
         return self.__root__ == other
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> _bool:
         return not self.__eq__(other)
 
-    def __add__(self, other):
+    def __add__(self, other: Self) -> Self:
         if not isinstance(other, Path):
-            return Path(self.__root__, other)
-        return Path(self.__root__, other.__root__)
+            return self.__class__(self.__root__, other)
+        return self.__class__(self.__root__, other.__root__)
 
-    def __sub__(self, other):
+    def __sub__(self, other: Self) -> Self:
         if isinstance(other, int):
             return self.path('../' * other)
         if isinstance(other, str) and self.__root__.endswith(other):
@@ -1075,40 +1035,40 @@ class Path:
             )
         )
 
-    def __invert__(self):
+    def __invert__(self) -> Self:
         return self.path('..')
 
-    def __contains__(self, item):
+    def __contains__(self, item: Self) -> _bool:
         base_path = self.__root__
         if len(base_path) > 1:
             base_path = os.path.join(base_path, '')
         return item.__root__.startswith(base_path)
 
-    def __repr__(self):
+    def __repr__(self) -> _str:
         return f'<Path:{self.__root__}>'
 
-    def __str__(self):
+    def __str__(self) -> _str:
         return self.__root__
 
-    def __unicode__(self):
+    def __unicode__(self) -> _str:
         return self.__str__()
 
-    def __getitem__(self, *args, **kwargs):
+    def __getitem__(self, *args: SupportsIndex | slice, **kwargs: SupportsIndex | slice) -> _str:
         return self.__str__().__getitem__(*args, **kwargs)
 
-    def __fspath__(self):
+    def __fspath__(self) -> _str:
         return self.__str__()
 
-    def rfind(self, *args, **kwargs):
+    def rfind(self, *args: Any, **kwargs: Any) -> _int:
         """Proxy method to :py:func:`str.rfind`"""
         return str(self).rfind(*args, **kwargs)
 
-    def find(self, *args, **kwargs):
+    def find(self, *args: Any, **kwargs: Any) -> _int:
         """Proxy method to :py:func:`str.find`"""
         return str(self).find(*args, **kwargs)
 
     @staticmethod
-    def _absolute_join(base, *paths, **kwargs):
+    def _absolute_join(base: _str, *paths: _str, **kwargs: _bool) -> _str:
         absolute_path = os.path.abspath(os.path.join(base, *paths))
         if kwargs.get('required', False) and not os.path.exists(absolute_path):
             raise ImproperlyConfigured(

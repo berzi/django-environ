@@ -13,7 +13,7 @@ from importlib.util import find_spec
 if find_spec('simplejson'):
     import simplejson as json
 else:
-    import json
+    import json  # type: ignore[no-redef]
 
 if find_spec('django'):
     from django import VERSION as DJANGO_VERSION
@@ -21,11 +21,11 @@ if find_spec('django'):
 else:
     DJANGO_VERSION = None
 
-    class ImproperlyConfigured(Exception):
+    class ImproperlyConfigured(Exception):  # type: ignore[no-redef]
         """Django is somehow improperly configured"""
 
 
-def choose_rediscache_driver():
+def choose_rediscache_driver() -> str:
     """Backward compatibility for RedisCache driver."""
 
     # django-redis library takes precedence
@@ -40,7 +40,7 @@ def choose_rediscache_driver():
     return 'redis_cache.RedisCache'
 
 
-def choose_postgres_driver():
+def choose_postgres_driver() -> str:
     """Backward compatibility for postgresql driver."""
     old_django = DJANGO_VERSION is not None and DJANGO_VERSION < (2, 0)
     if old_django:
@@ -48,7 +48,7 @@ def choose_postgres_driver():
     return 'django.db.backends.postgresql'
 
 
-def choose_pymemcache_driver():
+def choose_pymemcache_driver() -> str:
     """Backward compatibility for pymemcache."""
     old_django = DJANGO_VERSION is not None and DJANGO_VERSION < (3, 2)
     if old_django or not find_spec('pymemcache'):
